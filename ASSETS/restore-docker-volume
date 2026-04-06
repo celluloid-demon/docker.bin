@@ -16,7 +16,8 @@ readonly ARCHIVE_TMP="${HOME}/.TMP" # Should be an absolute path (avoids issues 
 
 # Graceful shutdown of containers
 cd "$STACK"
-docker compose down
+# docker compose down
+docker compose stop
 
 # Create directory for restoration
 mkdir -p "$ARCHIVE_TMP"
@@ -25,7 +26,7 @@ mkdir -p "$ARCHIVE_TMP"
 tar --extract --file "$ARCHIVE" --directory "$ARCHIVE_TMP"
 
 # Copy unpacked contents to service destination (preserving permissions and timestamps)
-docker compose cp --archive "${ARCHIVE_TMP}/*" "${SERVICE_NAME}:${DOCKER_DESTINATION}/"
+docker compose cp --archive "${ARCHIVE_TMP}/." "${SERVICE_NAME}:${DOCKER_DESTINATION}/"
 
 # Cleanup
 rm -rf "$ARCHIVE_TMP"
@@ -33,6 +34,7 @@ rm -rf "$ARCHIVE_TMP"
 # (Optionally) restart container
 if [[ "$RESTART" == "true" ]]; then
 
-  docker compose up --detach --remove-orphans
+  # docker compose up --detach --remove-orphans
+  docker compose start
 
 fi
