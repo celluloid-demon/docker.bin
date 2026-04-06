@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Declare constants
+readonly STACK="$1"
+readonly SERVICE_NAME="$2"
+readonly DOCKER_SOURCE="$3"
+readonly HOST_DESTINATION="$4"
+readonly RESTART="$5"
+
+readonly TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+
+readonly HOST_DESTINATION_TMP="${HOST_DESTINATION}/.tmp"
+
+# Enter stack directory
+cd "$STACK"
+
+# Graceful shutdown of containers
+docker compose down
+
+# Create directories for backup (if not already there)
+mkdir -p "$HOST_DESTINATION"
+mkdir -p "$HOST_DESTINATION_TMP"
+
+# Copy source *contents* from container to host destination (preserving permissions and timestamps)
+docker compose cp --archive "${SERVICE_NAME}:${DOCKER_SOURCE}/*" "${HOST_DESTINATION_TMP}/"
+
+# Change the directory *before* running the tar command so that the paths are recorded relative to the source, rather than from root
+tar --create --directory "$HOST_DESTINATION_TMP" --gzip --file "${HOST_DESTINATION}/$(basename "$DOCKER_SOURCE")_${TIMESTAMP}.tar.gz" .
+
+# Cleanup
+rm -rf "$HOST_DESTINATION_TMP"
+
+# Retention policy - keep only the last 30 days of backups
+find "$HOST_DESTINATION" -name "*.tar.gz" -type f -mtime +30 -delete
+
+# (Optionally) restart containers
+if [[ "$RESTART" == "true" ]]; then
+
+  docker compose up --detach --remove-orphans
+  
+fi
